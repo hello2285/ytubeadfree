@@ -51,69 +51,8 @@
         // CHANGE THE USERNAME BELOW TO YOUR ACTUAL PYTHONANYWHERE USERNAME
         const PYTHON_API_URL = "https://batup12.pythonanywhere.com/api/download";
 
-        function parseYouTubeUrl(urlText) {
-            let videoId = null;
-            let nocookieUrl = null;
-            let hyphenUrl = null;
-
-            try {
-                // Ensure protocol exists so the URL parser works correctly
-                let validUrl = urlText.trim();
-                if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
-                    validUrl = 'https://' + validUrl;
-                }
-                
-                const parsed = new URL(validUrl);
-                
-                // Rule 1: Handle standard youtube.com URLs
-                if (parsed.hostname.includes('youtube.com')) {
-                    videoId = parsed.searchParams.get('v');
-                    let listId = parsed.searchParams.get('list');
-                    
-                    if (videoId && listId) {
-                        nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?list=${listId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
-                    } else if (videoId) {
-                        nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playlist=${videoId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
-                    }
-                } 
-                // Rule 2: Handle shortened youtu.be URLs
-                else if (parsed.hostname.includes('youtu.be')) {
-                    // Extract video ID from the path (removes the leading slash)
-                    videoId = parsed.pathname.substring(1);
-                    
-                    if (videoId) {
-                        // Ignore any 'si' parameters and use the exact format requested
-                        nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playlist=${videoId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
-                    }
-                } 
-                // Fallback for weird formats
-                else {
-                    const match = urlText.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
-                    if (match) {
-                        videoId = match[1];
-                        nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playlist=${videoId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
-                    }
-                }
-
-                if (videoId) {
-                    hyphenUrl = `https://www.yout-ube.com/watch?v=${videoId}`;
-                }
-
-            } catch (err) {
-                // Failsafe regex if URL parsing completely fails
-                const match = urlText.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
-                if (match) {
-                    videoId = match[1];
-                    nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playlist=${videoId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
-                    hyphenUrl = `https://www.yout-ube.com/watch?v=${videoId}`;
-                }
-            }
-
-            return { videoId, nocookieUrl, hyphenUrl };
-        }
-
         async function processAction(action) {
-            const urlInput = document.getElementById("url-input").value;
+            let urlInput = document.getElementById("url-input").value.trim();
             const logBox = document.getElementById("log-box");
             const playerContainer = document.getElementById("player-container");
             const videoFrame = document.getElementById("video-frame");
@@ -124,13 +63,50 @@
             downloadList.style.display = "none";
             logBox.style.display = "block";
 
-            // Process the URL using the new precise logic
-            const { videoId, nocookieUrl, hyphenUrl } = parseYouTubeUrl(urlInput);
+            let videoId = "";
+            let listId = "";
+            let nocookieUrl = "";
+            let hyphenUrl = "";
+
+            try {
+                // Ensure the URL has http/https so the URL parser can read it
+                if (!urlInput.startsWith('http')) {
+                    urlInput = 'https://' + urlInput;
+                }
+                
+                const urlObj = new URL(urlInput);
+
+                // Pattern 2 Logic: Handle shortened youtu.be links
+                if (urlObj.hostname.includes("youtu.be")) {
+                    videoId = urlObj.pathname.slice(1); // Extracts the ID after the slash
+                } 
+                // Pattern 1 Logic: Handle standard youtube.com links
+                else if (urlObj.hostname.includes("youtube.com") || urlObj.hostname.includes("yout-ube.com")) {
+                    videoId = urlObj.searchParams.get("v");
+                    listId = urlObj.searchParams.get("list");
+                }
+            } catch (e) {
+                // Fallback if the URL structure is completely broken
+                const pattern = /(?:v=|\/)([0-9A-Za-z_-]{11})/;
+                const match = urlInput.match(pattern);
+                if (match) videoId = match[1];
+            }
 
             if (!videoId) {
-                logBox.innerHTML = "> Error: Invalid YouTube URL provided.";
+                logBox.innerHTML = "> Error: Invalid YouTube URL provided. Please check the link.";
                 return;
             }
+
+            // Constructing the final URLs based on your precise rules
+            if (listId) {
+                // Rule 1: Apply the list parameter and drop playlist
+                nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?list=${listId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
+            } else {
+                // Rule 2: Ignore 'si' tracking, apply playlist parameter
+                nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playlist=${videoId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
+            }
+
+            hyphenUrl = `https://www.yout-ube.com/watch?v=${videoId}`;
 
             if (action === 'play') {
                 logBox.innerHTML = `> Input: ${urlInput}<br>> Generating ad-free iframe...<br>> Final Target: ${nocookieUrl}`;
