@@ -178,7 +178,7 @@
     </div>
 
     <script>
-        // CHANGE "YOUR_PYTHONANYWHERE_USERNAME" TO YOUR ACTUAL USERNAME BELOW
+        // CRITICAL: CHANGE "YOUR_ACTUAL_USERNAME" BELOW TO YOUR PYTHONANYWHERE USERNAME
         const PYTHON_API_URL = "https://batup12.pythonanywhere.com/api/download";
 
         function parseYouTubeUrl(url) {
@@ -193,6 +193,7 @@
             const listId = listMatch ? listMatch[1] : null;
 
             let embedUrl = "";
+            let hyphenUrl = `https://www.yout-ube.com/watch?v=${videoId}`;
 
             if (url.includes("youtube.com") && listId) {
                 embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?list=${listId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
@@ -200,7 +201,7 @@
                 embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playlist=${videoId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
             }
 
-            return { videoId, embedUrl };
+            return { videoId, embedUrl, hyphenUrl };
         }
 
         function resetUI() {
@@ -210,7 +211,7 @@
             document.getElementById('iframe-container').style.display = 'none';
             document.getElementById('download-card').style.display = 'none';
             document.getElementById('download-list').style.display = 'none';
-            document.getElementById('new-tab-link-container').innerHTML = ''; // Clear previous links
+            document.getElementById('new-tab-link-container').innerHTML = ''; // Clear old links
         }
 
         async function processAction(action) {
@@ -227,10 +228,10 @@
                 return;
             }
 
-            const { embedUrl } = urlData;
+            const { embedUrl, hyphenUrl } = urlData;
 
             if (action === 'play_here') {
-                logBox.innerHTML = `> User Input Received: ${urlInput}<br>> Extracting Video ID and formatting string...<br>> Output Generated: ${embedUrl}`;
+                logBox.innerHTML = `> User Input Received: ${urlInput}<br>> Applying URL Routing Logic...<br>> Generating ad-free iframe...<br>> Final Target: ${embedUrl}`;
                 logBox.style.display = 'block';
                 
                 document.getElementById('player-title').innerText = "Inline Player";
@@ -239,19 +240,18 @@
                 document.getElementById('player-card').style.display = 'block';
             } 
             else if (action === 'new_tab') {
-                logBox.innerHTML = `> User Input Received: ${urlInput}<br>> Extracting Video ID and formatting string...<br>> Output Generated: ${embedUrl}`;
+                logBox.innerHTML = `> User Input Received: ${urlInput}<br>> Generating new tab URL...<br>> Opening: ${hyphenUrl}`;
                 logBox.style.display = 'block';
                 
                 document.getElementById('player-title').innerText = "Opening in New Tab...";
                 document.getElementById('iframe-container').style.display = 'none';
                 document.getElementById('player-card').style.display = 'block';
                 
-                // Add the link to the container cleanly
                 const linkHTML = `<p>If your browser blocked the pop-up, click the link below:</p>
-                                  <a href="${embedUrl}" target="_blank" class="new-tab-link">Click here to open link</a>`;
+                                  <a href="${hyphenUrl}" target="_blank" class="new-tab-link">Click here to open link</a>`;
                 
                 document.getElementById('new-tab-link-container').innerHTML = linkHTML;
-                window.open(embedUrl, "_blank");
+                window.open(hyphenUrl, "_blank");
             } 
             else if (action === 'download') {
                 const dlBtnText = document.getElementById("dl-btn-text");
