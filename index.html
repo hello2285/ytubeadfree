@@ -51,8 +51,39 @@
         // CHANGE THE USERNAME BELOW TO YOUR ACTUAL PYTHONANYWHERE USERNAME
         const PYTHON_API_URL = "https://batup12.pythonanywhere.com/api/download";
 
+        function parseYouTubeUrl(url) {
+            // Pattern to extract the 11-character video ID
+            const idPattern = /(?:v=|\/)([0-9A-Za-z_-]{11})/;
+            const idMatch = url.match(idPattern);
+            const videoId = idMatch ? idMatch[1] : null;
+
+            if (!videoId) return null;
+
+            // Pattern to extract the list ID if it exists
+            const listPattern = /[?&]list=([a-zA-Z0-9_-]+)/;
+            const listMatch = url.match(listPattern);
+            const listId = listMatch ? listMatch[1] : null;
+
+            let nocookieUrl = "";
+
+            // Apply the specific routing logic based on URL structure
+            if (url.includes("youtube.com") && listId) {
+                // For standard URLs with a playlist attached
+                nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?list=${listId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
+            } else {
+                // For youtu.be shortened links or standard links without a list
+                nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playlist=${videoId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
+            }
+
+            const hyphenUrl = `https://www.yout-ube.com/watch?v=${videoId}`;
+
+            return { videoId, nocookieUrl, hyphenUrl };
+        }
+
         async function processAction(action) {
-            let urlInput = document.getElementById("url-input").value.trim();
+            const urlInput = document.getElementById("url-input").value;
+            const urlData = parseYouTubeUrl(urlInput);
+            
             const logBox = document.getElementById("log-box");
             const playerContainer = document.getElementById("player-container");
             const videoFrame = document.getElementById("video-frame");
@@ -63,53 +94,15 @@
             downloadList.style.display = "none";
             logBox.style.display = "block";
 
-            let videoId = "";
-            let listId = "";
-            let nocookieUrl = "";
-            let hyphenUrl = "";
-
-            try {
-                // Ensure the URL has http/https so the URL parser can read it
-                if (!urlInput.startsWith('http')) {
-                    urlInput = 'https://' + urlInput;
-                }
-                
-                const urlObj = new URL(urlInput);
-
-                // Pattern 2 Logic: Handle shortened youtu.be links
-                if (urlObj.hostname.includes("youtu.be")) {
-                    videoId = urlObj.pathname.slice(1); // Extracts the ID after the slash
-                } 
-                // Pattern 1 Logic: Handle standard youtube.com links
-                else if (urlObj.hostname.includes("youtube.com") || urlObj.hostname.includes("yout-ube.com")) {
-                    videoId = urlObj.searchParams.get("v");
-                    listId = urlObj.searchParams.get("list");
-                }
-            } catch (e) {
-                // Fallback if the URL structure is completely broken
-                const pattern = /(?:v=|\/)([0-9A-Za-z_-]{11})/;
-                const match = urlInput.match(pattern);
-                if (match) videoId = match[1];
-            }
-
-            if (!videoId) {
-                logBox.innerHTML = "> Error: Invalid YouTube URL provided. Please check the link.";
+            if (!urlData) {
+                logBox.innerHTML = "> Error: Invalid YouTube URL provided.";
                 return;
             }
 
-            // Constructing the final URLs based on your precise rules
-            if (listId) {
-                // Rule 1: Apply the list parameter and drop playlist
-                nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?list=${listId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
-            } else {
-                // Rule 2: Ignore 'si' tracking, apply playlist parameter
-                nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playlist=${videoId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
-            }
-
-            hyphenUrl = `https://www.yout-ube.com/watch?v=${videoId}`;
+            const { videoId, nocookieUrl, hyphenUrl } = urlData;
 
             if (action === 'play') {
-                logBox.innerHTML = `> Input: ${urlInput}<br>> Generating ad-free iframe...<br>> Final Target: ${nocookieUrl}`;
+                logBox.innerHTML = `> Input: ${urlInput}<br>> Applying URL Routing Logic...<br>> Generating ad-free iframe...<br>> Final Target: ${nocookieUrl}`;
                 playerContainer.style.display = "block";
                 videoFrame.src = nocookieUrl;
             } 
