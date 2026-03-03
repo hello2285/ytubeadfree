@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional YouTube Utility</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 800px; }
+        .card { background: #1e1e1e; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px; text-align: center; box-sizing: border-box; }
+        h1 { color: #ff0000; margin-bottom: 20px; }
+        input[type="text"] { width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #333; background: #252525; color: white; font-size: 16px; margin-bottom: 20px; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; min-width: 140px; font-size: 14px;}
+        .play-btn { background-color: #ff0000; color: white; }
+        .tab-btn { background-color: #444; color: white; }
+        .down-btn { background-color: #28a745; color: white; }
+        button:hover { opacity: 0.8; }
+        .log-box { background: #000; color: #00ff00; padding: 15px; border-radius: 8px; text-align: left; font-family: monospace; font-size: 14px; display: none; margin-top: 20px; word-wrap: break-word; }
+        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; margin-top: 20px; display: none; background: #000; }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+        .download-list { list-style: none; padding: 0; text-align: left; margin-top: 20px; display: none; }
+        .download-list li { padding: 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .dl-btn { background-color: #28a745; color: white; text-decoration: none; padding: 10px 15px; border-radius: 4px; font-size: 14px; text-align: center; }
+        @media (max-width: 600px) { .btn-group { flex-direction: column; } button { width: 100%; } .download-list li { flex-direction: column; align-items: flex-start; } .dl-btn { width: 100%; box-sizing: border-box; } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="card">
+            <h1>YT Ad-Free Tool</h1>
+            <input type="text" id="url-input" placeholder="Paste YouTube link here (e.g., https://youtu.be/...)">
+            <div class="btn-group">
+                <button class="play-btn" onclick="processAction('play')">Play Here</button>
+                <button class="tab-btn" onclick="processAction('tab')">Open New Tab</button>
+                <button class="down-btn" onclick="processAction('download')" id="dl-button-text">Get Download Links</button>
+            </div>
+
+            <div id="log-box" class="log-box"></div>
+
+            <div id="player-container" class="video-wrapper">
+                <iframe id="video-frame" allowfullscreen allow="autoplay"></iframe>
+            </div>
+
+            <ul id="download-list" class="download-list"></ul>
+        </div>
+    </div>
+
+    <script>
+        // CHANGE THE USERNAME BELOW TO YOUR ACTUAL PYTHONANYWHERE USERNAME
+        const PYTHON_API_URL = "https://YOUR_PYTHONANYWHERE_USERNAME.pythonanywhere.com/api/download";
+
+        function getVideoId(url) {
+            const pattern = /(?:v=|\/)([0-9A-Za-z_-]{11})/;
+            const match = url.match(pattern);
+            return match ? match[1] : null;
+        }
+
+        async function processAction(action) {
+            const urlInput = document.getElementById("url-input").value;
+            const videoId = getVideoId(urlInput);
+            const logBox = document.getElementById("log-box");
+            const playerContainer = document.getElementById("player-container");
+            const videoFrame = document.getElementById("video-frame");
+            const downloadList = document.getElementById("download-list");
+            const dlBtnText = document.getElementById("dl-button-text");
+
+            playerContainer.style.display = "none";
+            downloadList.style.display = "none";
+            logBox.style.display = "block";
+
+            if (!videoId) {
+                logBox.innerHTML = "> Error: Invalid YouTube URL provided.";
+                return;
+            }
+
+            const nocookieUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playlist=${videoId}&autoplay=1&iv_load_policy=3&loop=1&start=`;
+            const hyphenUrl = `https://www.yout-ube.com/watch?v=${videoId}`;
+
+            if (action === 'play') {
+                logBox.innerHTML = `> Input: ${urlInput}<br>> Extracting ID: ${videoId}<br>> Generating ad-free iframe...<br>> Final Target: ${nocookieUrl}`;
+                playerContainer.style.display = "block";
+                videoFrame.src = nocookieUrl;
+            } 
+            else if (action === 'tab') {
+                logBox.innerHTML = `> Input: ${urlInput}<br>> Generating new tab URL...<br>> Opening: ${hyphenUrl}`;
+                window.open(hyphenUrl, "_blank");
+            } 
+            else if (action === 'download') {
+                logBox.innerHTML = `> Input: ${urlInput}<br>> Contacting Python Backend API for download streams...`;
+                dlBtnText.innerText = "Loading...";
+                
+                try {
+                    const response = await fetch(PYTHON_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: urlInput })
+                    });
+                    
+                    const data = await response.json();
+                    dlBtnText.innerText = "Get Download Links";
+                    
+                    if (data.error) {
+                        logBox.innerHTML += `<br>> API Error: ${data.error}`;
+                        return;
+                    }
+
+                    downloadList.innerHTML = "";
+                    data.formats.forEach(f => {
+                        const li = document.createElement("li");
+                        li.innerHTML = `<span><strong>Quality:</strong> ${f.resolution} | <strong>Format:</strong> ${f.ext}</span>
+                                        <a href="${f.url}" class="dl-btn" target="_blank" download>Download</a>`;
+                        downloadList.appendChild(li);
+                    });
+                    
+                    logBox.innerHTML += `<br>> Success: Retrieved ${data.formats.length} streams.`;
+                    downloadList.style.display = "block";
+
+                } catch (err) {
+                    dlBtnText.innerText = "Get Download Links";
+                    logBox.innerHTML += `<br>> Connection Error: Could not reach the Python server. Make sure it is running on PythonAnywhere.`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
